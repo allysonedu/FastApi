@@ -2,6 +2,9 @@ from fastapi import FastAPI, Response, status, HTTPException
 from fastapi.params import Body
 from pydantic import BaseModel
 from random import randrange
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import time
 
 
 app = FastAPI()
@@ -10,6 +13,25 @@ app = FastAPI()
 class Post(BaseModel):
     title: str
     content: str
+
+
+while True:
+    # responsible for connecting to database
+    try:
+        conn = psycopg2.connect(
+            host="localhost",
+            database="fastapi",
+            user="python",
+            password="123456",
+            cursor_factory=RealDictCursor,
+        )  # conection with database postgres, and dbeaver. ( sudo docker run --name fastapi -e POSTGRES_PASSWORD=123456 -e POSTGRES_USER=python -e POSTGRES_DB=fastapi -p 5432:5432 -d postgres)
+        cursor = conn.cursor()
+        print("Database connection was successfully")
+        break
+    except Exception as error:
+        print("Database not connected")
+        print("Error: ", error)
+        time.sleep(2)
 
 
 my_posts = [
@@ -30,9 +52,9 @@ def find_index_post(id):
             return i
 
 
-@app.get("/")
-def root():
-    return {"message": my_posts}
+# @app.get("/")
+# def root():
+#     return {"message": my_posts}
 
 
 @app.post("/create_post", status_code=status.HTTP_201_CREATED)
@@ -77,3 +99,11 @@ def update_post(id: int, post: Post):
     post_dict["id"] = id
     my_posts[index] = post_dict
     return {"message": post_dict}
+
+
+@app.get("/")
+def get_posts():
+    posts = cursor.execute("""SELECT * FROM posts """) # criar uma tabela na mão no dbaver
+    posts = cursor.fetchall()
+    print(posts)
+    return {"data": my_posts}
